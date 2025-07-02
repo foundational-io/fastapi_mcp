@@ -1,6 +1,9 @@
+import uuid
 from fastapi import FastAPI, Depends
+from fastapi.responses import JSONResponse
 import httpx
-from pydantic_settings import BaseSettings
+from fastapi_mcp.types import ClientRegistrationRequest
+from pydantic_settings import BaseSettings   # type: ignore
 import logging
 
 from frontegg.fastapi import frontegg
@@ -84,6 +87,23 @@ async def oauth_authorization_server():  # type: ignore
     return metadata
 
 
+@app.post("/oauth/register", include_in_schema=False)
+async def oauth_register(request: ClientRegistrationRequest) -> JSONResponse:
+    """
+    This endpoint is a mock endpoint for dynamic client registration.
+    It is not implemented in this example, but it is required by the MCP protocol.
+    """
+    return JSONResponse(
+        {
+            "client_id": str(uuid.uuid4()),
+            "client_name": request.client_name,
+            "redirect_uris": request.redirect_uris,
+            "grant_types": request.grant_types,
+            "token_endpoint_auth_method": request.token_endpoint_auth_method,
+        }
+    )
+
+
 @app.get("/api/public", operation_id="public")
 async def public():
     return {"message": "This is a public route"}
@@ -103,10 +123,10 @@ mcp = FastApiMCP(
         issuer=f"https://{settings.frontegg_domain}/",
         authorize_url=f"https://{settings.frontegg_domain}/oauth/authorize",
         oauth_metadata_url=settings.frontegg_oauth_metadata_url,
-        client_id=settings.frontegg_client_id,
-        client_secret=settings.frontegg_client_secret,
+        client_id=str(uuid.uuid4()),
         dependencies=[Depends(FronteggSecurity())],
         setup_proxies=True,
+        setup_fake_dynamic_registration=False,
     ),
 )
 
